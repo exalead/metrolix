@@ -1,0 +1,4 @@
+#! /bin/bash -ex
+
+PROJECT=$1
+echo "{\"project_name\" :\"$PROJECT\"}"|POST $METROLIX_SERVER/server/start_session
