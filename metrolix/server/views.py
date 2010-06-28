@@ -59,6 +59,10 @@ def report_result(request):
     metrics = Metric.objects.filter(path=data["path"])
     if len(metrics) == 0:
         metric = Metric(path=data["path"], project = session.project)
+        if data.has_key("title"):
+            metric.title = data["title"]
+        if data.has_key("type"):
+            metric.type = data["type"]
         metric.save()
     else:
         metric = metrics[0]
@@ -116,7 +120,7 @@ def json_metrics_list(request, project):
     metrics = Metric.objects.filter(project=proj_obj)
 
     if data.has_key("path_filter"):
-        metrics = metrics.filter(path__contains=data["path_filter"])
+        metrics = metrics.filter(path__contains=data["path_filter"]).order_by("path")
 
     ret = []
     for metric in metrics:
