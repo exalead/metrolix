@@ -1,0 +1,16 @@
+#! /bin/sh
+rm metrolix.db
+./manage.py syncdb
+
+cat|./manage.py shell << EOF
+from metrolix.server.models import *
+import metrolix
+p = Project(name="EDK")
+p.save()
+s = Session(project=p, token="zesupertoken")
+s.save()
+pi = Metric(path="A/B/C", title="ABC title", project = p)
+pi.save()
+r = Result(metric=pi, session = s, value=42)
+r.save()
+EOF
