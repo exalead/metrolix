@@ -1,0 +1,6 @@
+*.pyc
+*.swp
+.classpath
+.project
+.settings/
+metrolix/metrolix.db
