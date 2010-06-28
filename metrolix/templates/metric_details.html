@@ -1,0 +1,45 @@
+<html>
+<head>
+ <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+    
+      // Load the Visualization API and the piechart package.
+      google.load('visualization', '1', {'packages':['piechart', "imageareachart","corechart", "annotatedtimeline"]});
+      
+      // Set a callback to run when the Google Visualization API is loaded.
+      google.setOnLoadCallback(drawChart);
+  // Callback that creates and populates a data table, 
+      // instantiates the pie chart, passes in the data and
+      // draws it.
+      function drawChart() {
+
+      // Create our data table.
+        var data = new google.visualization.DataTable();
+        data.addColumn('datetime', 'Date');
+        data.addColumn('number', 'Value');
+        {% for result in results %}
+        data.addRow([new Date(Date.parse('{{result.session.date|date:"Y/m/d H:00"}}')), parseInt('{{result.value}}')])
+        {%endfor%}
+
+        // Instantiate and draw our chart, passing in some options.
+//        var chart = new google.visualization.ImageAreaChart(document.getElementById('chart_div'));
+//        var chart = new google.visualization.AnnotatedTimeLine(document.getElementById('chart_div'));
+        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+        chart.draw(data, {width: 800, height: 240, is3D: true, title: 'Value of {{metric.title}}'});
+      }
+    </script>
+  </head>
+
+</head>
+
+<h1>Metric view for {{ metric.title }} ({{ metric.path }})</h1>
+
+<div id="chart_div"></div><!-- style="width:700px; height:500px;"></div>-->
+
+<table>
+<tr><th>Value</th><th>Date</th></tr>
+
+{% for result in results %}
+<tr><td>{{result.value}}</td><td>{{result.session.date}}</td></tr>
+{% endfor %}
+</table>

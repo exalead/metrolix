@@ -1,0 +1,124 @@
+<html>
+<head>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+        var metrics_table
+        var metrics_data
+        var values_graph
+        var values_data
+
+        google.load("jquery", "1.4.2")
+        google.load('visualization', '1', {'packages':['table', "corechart", "annotatedtimeline"]})
+        google.setOnLoadCallback(gdataLoaded);
+        function gdataLoaded() {
+            $("#graph_button").click(function(event) {
+                paths = ""
+                selection = metrics_table.getSelection()
+                for (var i = 0; i < selection.length; i++) {
+                    if (i!= 0) {
+                        paths += "&"
+                    }
+                    paths += "path=" +metrics_data.getValue(selection[i].row, 0)
+                }
+                $.getJSON("/json_api/metrics_data/{{project.name}}?" + paths,
+                    function(data) {
+                        drawGraph(data)
+                    })
+            })
+/*
+            $("#path_filter_input").change(function(event) {
+                text = $("#path_filter_input").val()
+                console.log("filter is " + text)
+                $.getJSON("/json_api/metrics_list/{{project.name}}?path_filter=" + text,
+                    function (data) {
+                        drawTable(data)
+                    }
+                )
+            })
+            */
+            $("#path_filter_button").click(function(event) {
+                text = $("#path_filter_input").val()
+                console.log("filter is " + text)
+                $.getJSON("/json_api/metrics_list/{{project.name}}?path_filter=" + text,
+                    function (data) {
+                        drawTable(data)
+                    }
+                )
+            })
+
+
+            $.getJSON("/json_api/metrics_list/{{project.name}}",
+                function (data) {
+                    drawTable(data)
+                }
+            )
+        }
+  
+        /* Draw the chart from JSON data */
+        function drawGraph(jsondata) {
+            /* Populate with initial data */
+            values_data = new google.visualization.DataTable();
+            values_data.addColumn('datetime', 'Date');
+            for (var metric in jsondata.metrics) {
+                values_data.addColumn('number', jsondata.metrics[metric].path);
+//		values_data.addColumn("string", "t1")
+//		values_data.addColumn("string", "t2")
+            }
+            nsess = 0
+            for (var sess = 0; sess < jsondata.sessions.length; sess++) {
+                data = jsondata.sessions[sess]
+                values_data.addRows(1)
+                values_data.setValue(sess, 0, new Date(data.date*1000))
+                for (var i = 0; i < jsondata.metrics.length; i++) {
+                    if (data.values[i] != "undefined") {
+                        values_data.setValue(sess, i + 1 , data.values[i])
+                    }
+                }
+                nsess++
+            }
+            values_graph = new google.visualization.AnnotatedTimeLine(document.getElementById('values_div'));
+            values_graph.draw(values_data, {width: 1000, height: 240, is3D: true, title: 'Values'})
+
+            values_graph2 = new google.visualization.LineChart(document.getElementById('values_div2'));
+            values_graph2.draw(values_data, {width: 1000, height: 240, is3D: true, title: 'Values'})
+
+        }
+
+        /* Draw the view from JSON data */
+        function drawTable(jsondata) {
+            /* Populate with initial data */
+            metrics_data = new google.visualization.DataTable();
+            metrics_data.addColumn('string', 'Path');
+            metrics_data.addColumn('string', 'Title');
+            metrics_data.addColumn('number', 'Nb. Values');
+            metrics_data.addColumn('number', 'Latest value');
+            for (var i in jsondata) {
+                metrics_data.addRow([jsondata[i].path, jsondata[i].title, jsondata[i].nb_values, 0])
+            }
+            metrics_table = new google.visualization.Table(document.getElementById('metrics_div'));
+            metrics_table.draw(metrics_data, {width: 800, is3D: true, title: 'List of metrics',
+                              page:"enable", pageSize : 20});
+        }
+
+    </script>
+  </head>
+
+</head>
+
+<body>
+
+<h1>List of metrics for {{ project.name }}</h1>
+
+<div id="metrics_div"></div>
+
+<input type="text" id="path_filter_input" />
+<input type="submit" id="path_filter_button" value="Refresh" />
+
+
+<input type="submit" id="graph_button" value="Get graph"/>
+
+<div id="values_div" style="width:800px;height:240px;"></div>
+<div id="values_div2"></div>
+
+</body>
+</html>
