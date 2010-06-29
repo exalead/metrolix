@@ -13,6 +13,7 @@ urlpatterns = patterns('',
 
     (r'^json_api/sessions_list/(?P<project>[\.A-z0-9_-]+)$', "metrolix.server.views.json_sessions_list"),
     (r'^json_api/session_results/(?P<project>[\.A-z0-9_-]+)$', "metrolix.server.views.json_session_results"),
+    (r'^json_api/delete_session', "metrolix.server.views.json_delete_session"),
 
     (r'^json_api/set_project', "metrolix.server.views.json_set_project"),
     (r'^json_api/metrics_data/(?P<project>[\.A-z0-9_-]+)$', "metrolix.server.views.json_metrics_data"),
@@ -28,6 +29,7 @@ urlpatterns = patterns('',
 
     (r'^dashboard/sessions_view$', "metrolix.server.views.sessions_view_noproject"),
     (r'^dashboard/sessions_view/(?P<project>[\.A-z0-9_-]+)$', "metrolix.server.views.sessions_view"),
+
 
     # Catch-all
     (r'^dashboard', "metrolix.server.views.index"),

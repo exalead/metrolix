@@ -56,6 +56,7 @@
         function drawSessionsTable(jsondata) {
             sessions_data = new google.visualization.DataTable();
             sessions_data.addColumn('datetime', 'Date');
+            sessions_data.addColumn('string', 'Project version');
             sessions_data.addColumn('string', 'Hostname');
             sessions_data.addColumn('string', 'Architecture');
             sessions_data.addColumn('string', 'OS');
@@ -63,12 +64,14 @@
             var n=0
             for (var i in jsondata) {
                 sessions_data.addRow([new Date(jsondata[i].date*1000),
+		  jsondata[i].version,
                   jsondata[i].hostname ? 
                        "<a href=\"/admin/server/host/" + jsondata[i].hostid + "\">" + jsondata[i].hostname + "</a>" : "",
                   jsondata[i].architecture, jsondata[i].os, 
                   
                   "[<a href=\"#\" class=\"details_button\" id=\"details__" +  jsondata[i].token + "\">Get values</a>]" +
-                  "[<a href=\"/admin/server/session/" + jsondata[i].sessionid + "\">Edit session</a>]"
+                  "[<a href=\"/admin/server/session/" + jsondata[i].sessionid + "\">Edit session</a>]" +
+                  "[<a href=\"#\" class=\"delete_button\" id=\"delete__" + jsondata[i].token + "\">Delete session</a>]"
                   ])
                 n++
             }
@@ -76,7 +79,7 @@
             sessions_table.draw(sessions_data, {width: 800, is3D: true, title: 'List of metrics',
                               page:"enable", pageSize : 20,allowHtml:true});
 
-            /* Only put the event handler *after* the table has been drawn */
+            /* Only put the event handlers *after* the table has been drawn so that they exist*/
             $(".details_button").click(function(event) {
                 var src = event.target.id
                 var token = src.split("__")[1]
@@ -85,7 +88,14 @@
                         drawResultsTable(data)
                 }) 
             })
-
+            $(".delete_button").click(function(event) {
+                var src = event.target.id
+                var token = src.split("__")[1]
+                $.post("/json_api/delete_session", {"token":token},
+                    function(data) {
+			location.reload()
+                }) 
+            })
         }
 
         function drawResultsTable(jsondata) {

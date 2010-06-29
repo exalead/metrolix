@@ -76,7 +76,7 @@ def report_result(request):
       return HttpResponseNotFound("Could not find session (bad token: %s)" % data["session_token"])
 
     # Retrieve or create the path info object
-    metrics = Metric.objects.filter(path=data["path"])
+    metrics = Metric.objects.filter(path=data["path"],project=session.project)
     if len(metrics) == 0:
         metric = Metric(path=data["path"], project = session.project)
         if data.has_key("title"):
@@ -103,7 +103,9 @@ def json_metrics_list(request, project):
 
     metrics = Metric.objects.filter(project=proj_obj)
     if request.GET.has_key("path_filter"):
-        metrics = metrics.filter(path__contains=request.GET["path_filter"]).order_by("path")
+        metrics = metrics.filter(path__contains=request.GET["path_filter"])
+
+    metrics = metrics.order_by("path")
 
     ret = []
     for metric in metrics:
@@ -133,6 +135,7 @@ def json_sessions_list(request, project):
         rs = {"date" : time.mktime(session.date.timetuple())}
         rs["token"] = session.token
         rs["sessionid"] = session.id
+        rs["version"] = session.version
         if session.host is not None:
             rs["os"] = session.host.os
             rs["architecture"] = session.host.architecture
@@ -186,7 +189,7 @@ def json_metrics_data(request, project):
 
     sessions = {}
 
-    results = Result.objects.filter(metric__path__in=data.getlist("path"))
+    results = Result.objects.filter(metric__path__in=data.getlist("path"),metric__project=proj_obj)
     for result in results:
         if not sessions.has_key(result.session.token):
             sessions[result.session.token] = {"date" : time.mktime(result.session.date.timetuple()), "values":[]}
@@ -201,6 +204,11 @@ def json_metrics_data(request, project):
 def json_delete_result(request):
     id = request.REQUEST["id"]
     Result.objects.get(pk=id).delete()
+    return HttpResponse("ok")
+
+def json_delete_session(request):
+    token = request.POST["token"]
+    Session.objects.get(token=token).delete()
     return HttpResponse("ok")
 
 ####################################################################
