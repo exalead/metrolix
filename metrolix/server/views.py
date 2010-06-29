@@ -141,7 +141,7 @@ def metrics_view(request, project):
 
     ret =  {"project": proj_obj, "metrics" : metrics}
     put_projects(ret)
-    return render_to_response("metric_list.html", ret)
+    return render_to_response("metrics_view.html", ret)
 
 def json_metrics_list(request, project):
     try:
