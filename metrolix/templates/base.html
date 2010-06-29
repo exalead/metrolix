@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>                             
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <link type="text/css" rel="stylesheet" href="/site_media/css/metrolix.css" />
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    {%block js_header %} {%endblock %}
+
+    <script>
+        $(document).ready(function() {
+            $("#projects_selector").change(function(event) {
+                $.post("/json_api/set_project", {project_name:$("#projects_selector").val()},
+                        function(data) {
+                            location.reload()
+                        })
+            })
+        })
+    </script>
+  </head>
+
+  <body>
+
+  <div class="top_bar"></div>
+
+  <div class="menu_bar"></div>
+
+  <a href="/dashboard/home">Home</a>
+  <a href="/dashboard/metrics_view">Metrics View</a>
+  <a href="/dashboard/session_view">Session View</a>
+
+  <select id="projects_selector">
+  {% for project in projects %}
+      <option>{{project}}</option>
+  {%endfor %}
+</select>
+
+  </div>
+
+  <div class="main_content">
+    {%block content %} {%endblock %}
+  </div>
+
+  </body>
+</html>

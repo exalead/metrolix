@@ -1,0 +1,20 @@
+body {
+  font-family: Verdana, Arial;
+}
+
+.default_value {
+    color:#777777;
+    font-style:italic;
+}
+
+.filters {
+    background-color:#eee;
+    padding:0.5em;
+    margin: 1px grey solid;
+}
+
+.metrics_actions {
+    background-color:#eee;
+    padding:0.5em;
+    margin: 1px grey solid;
+}
