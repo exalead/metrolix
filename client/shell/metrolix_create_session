@@ -1,12 +1,26 @@
-#! /bin/bash -ex
+#! /bin/bash -e
 
 PROJECT=$1
+if [ -n $2 ]
+then
+VERSION=$2
+else
+VERSION=""
+fi
 
 HOSTNAME=`hostname`
 NCPUS=`grep -c vendor_id /proc/cpuinfo`
 RAM=$[`grep MemTotal /proc/meminfo|awk '{print $2}'`/1024]
-CPUTYPE=`cat /proc/cpuinfo|grep "model name"|cut -d ':' -f 2-|head -1`
 
-HI="{\"name\" : \"$HOSTNAME\", \"cpus\" : \"$NCPUS\", \"ram_mb\":\"$RAM\", \"cpu_type\" : \"$CPUTYPE\"}"
+HI="{\"name\" : \"$HOSTNAME\", \"cpus\" : \"$NCPUS\", \"ram_mb\":\"$RAM\"}"
 
-echo "{\"project_name\" :\"$PROJECT\", \"host_info\" : $HI}"|POST $METROLIX_SERVER/server/start_session
+if [ -f /usr/bin/POST ]
+then
+  cmd=/usr/bin/POST
+else
+  cmd=/udir/stenac/bin/POST
+fi
+#echo "{\"project_name\" :\"$PROJECT\", \"version\" : \"$VERSION\", \"host_info\" : $HI}"|$cmd $METROLIX_SERVER/server/start_session
+
+DATA="{\"project_name\" :\"$PROJECT\", \"version\" : \"$VERSION\", \"host_info\" : $HI}"
+wget -O /dev/stdout -o /dev/null --post-data "$DATA" "$METROLIX_SERVER/server/start_session"
