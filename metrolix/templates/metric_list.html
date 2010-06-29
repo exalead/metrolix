@@ -1,16 +1,22 @@
-<html>
-<head>
-    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+{%extends "base.html" %}
+
+{%block js_header %}
+    <script type="text/javascript" src="/site_media/js/hint.js"></script>
     <script type="text/javascript">
         var metrics_table
         var metrics_data
         var values_graph
         var values_data
 
-        google.load("jquery", "1.4.2")
+   //     google.load("jquery", "1.4.2")
         google.load('visualization', '1', {'packages':['table', "corechart", "annotatedtimeline"]})
         google.setOnLoadCallback(gdataLoaded);
+        
         function gdataLoaded() {
+            $("#path_filter_input").hint("default_value");    
+
+            $("#graph_button").attr("disabled", true);
+
             $("#graph_button").click(function(event) {
                 paths = ""
                 selection = metrics_table.getSelection()
@@ -36,7 +42,11 @@
                 )
             })
             */
-            $("#path_filter_button").click(function(event) {
+            //$("#path_filter_button").click(function(event) {
+            $("#path_filter_input").keypress(function(event) {
+                if (event.keyCode != '13') {
+                    return;
+                }
                 text = $("#path_filter_input").val()
                 console.log("filter is " + text)
                 $.getJSON("/json_api/metrics_list/{{project.name}}?path_filter=" + text,
@@ -98,27 +108,47 @@
             metrics_table = new google.visualization.Table(document.getElementById('metrics_div'));
             metrics_table.draw(metrics_data, {width: 800, is3D: true, title: 'List of metrics',
                               page:"enable", pageSize : 20});
+
+            google.visualization.events.addListener(metrics_table, 'select', function(e) {
+                selection = metrics_table.getSelection()
+                if (selection.length == 0) {
+                    $("#graph_button").attr("disabled", true);
+                    $("#details_button").attr("disabled", true);
+                } else if (selection.length == 1) {
+                    $("#graph_button").attr("disabled", false);
+                    $("#details_button").attr("disabled", false);
+                } else {
+                    $("#graph_button").attr("disabled", false);
+                    $("#details_button").attr("disabled", true);
+                }
+            });
         }
-
     </script>
-  </head>
+{%endblock %}
 
-</head>
-
-<body>
+{%block content %}
 
 <h1>List of metrics for {{ project.name }}</h1>
 
-<div id="metrics_div"></div>
+<div class="filters">
+  Filters : 
+  <input type="text" id="path_filter_input" title="Path filter"/>
+</div>
 
-<input type="text" id="path_filter_input" />
-<input type="submit" id="path_filter_button" value="Refresh" />
 
+<div class="metrics_list">
+  <div id="metrics_div"></div>
+</div>
 
-<input type="submit" id="graph_button" value="Get graph"/>
+<div class="metrics_actions">
+  Actions :
+  <input type="submit" id="graph_button" value="Get graph for selected metrics"/>
+  <input type="submit" id="details_button" value="Detailed metric view"/>
+</div>
+<!--<input type="submit" id="path_filter_button" value="Refresh" />-->
+
 
 <div id="values_div" style="width:800px;height:240px;"></div>
 <div id="values_div2"></div>
 
-</body>
-</html>
+{%endblock %}
