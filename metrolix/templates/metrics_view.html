@@ -8,14 +8,13 @@
         var values_graph
         var values_data
 
-   //     google.load("jquery", "1.4.2")
         google.load('visualization', '1', {'packages':['table', "corechart", "annotatedtimeline"]})
         google.setOnLoadCallback(gdataLoaded);
         
         function gdataLoaded() {
-            $("#path_filter_input").hint("default_value");    
-
+	    /* Action buttons */
             $("#graph_button").attr("disabled", true);
+            $("#details_button").attr("disabled", true);
 
             $("#graph_button").click(function(event) {
                 paths = ""
@@ -31,18 +30,15 @@
                         drawGraph(data)
                     })
             })
-/*
-            $("#path_filter_input").change(function(event) {
-                text = $("#path_filter_input").val()
-                console.log("filter is " + text)
-                $.getJSON("/json_api/metrics_list/{{project.name}}?path_filter=" + text,
-                    function (data) {
-                        drawTable(data)
-                    }
-                )
-            })
-            */
-            //$("#path_filter_button").click(function(event) {
+	    $("#details_button").click(function(event) {
+                selection = metrics_table.getSelection()
+                path = metrics_data.getValue(selection[0].row, 0)
+		document.location="/dashboard/metric_details?path=" + path
+	    })
+
+
+	    /* Path filter */
+            $("#path_filter_input").hint("default_value");    
             $("#path_filter_input").keypress(function(event) {
                 if (event.keyCode != '13') {
                     return;
@@ -56,7 +52,7 @@
                 )
             })
 
-
+	    /* Initial data load */
             $.getJSON("/json_api/metrics_list/{{project.name}}",
                 function (data) {
                     drawTable(data)
@@ -64,15 +60,13 @@
             )
         }
   
-        /* Draw the chart from JSON data */
+        /* Draw the chart from JSON data for selected metrics */
         function drawGraph(jsondata) {
             /* Populate with initial data */
             values_data = new google.visualization.DataTable();
             values_data.addColumn('datetime', 'Date');
             for (var metric in jsondata.metrics) {
                 values_data.addColumn('number', jsondata.metrics[metric].path);
-//		values_data.addColumn("string", "t1")
-//		values_data.addColumn("string", "t2")
             }
             nsess = 0
             for (var sess = 0; sess < jsondata.sessions.length; sess++) {
@@ -94,7 +88,7 @@
 
         }
 
-        /* Draw the view from JSON data */
+        /* Draw the table from JSON data with all metrics */
         function drawTable(jsondata) {
             /* Populate with initial data */
             metrics_data = new google.visualization.DataTable();
@@ -145,8 +139,6 @@
   <input type="submit" id="graph_button" value="Get graph for selected metrics"/>
   <input type="submit" id="details_button" value="Detailed metric view"/>
 </div>
-<!--<input type="submit" id="path_filter_button" value="Refresh" />-->
-
 
 <div id="values_div" style="width:800px;height:240px;"></div>
 <div id="values_div2"></div>

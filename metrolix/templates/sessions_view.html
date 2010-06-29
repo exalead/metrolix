@@ -1,0 +1,123 @@
+{%extends "base.html" %}
+
+{%block js_header %}
+    <script type="text/javascript" src="/site_media/js/hint.js"></script>
+    <script type="text/javascript">
+        var sessions_table
+        var sessions_data
+
+        google.load('visualization', '1', {'packages':['table']})
+        $(document).ready(function() {
+                google.setOnLoadCallback(gdataLoaded);
+        })
+        
+        function gdataLoaded() {
+            $("#host_filter_input").hint("default_value");    
+            $("#os_filter_input").hint("default_value");    
+            $("#arch_filter_input").hint("default_value");    
+
+            $(".filter_button").keypress(function(event) {
+                if (event.keyCode != '13') {
+                    return;
+                }
+                fetchSessionsList()
+            })
+
+            fetchSessionsList()
+        }
+
+        function fetchSessionsList() {
+            total = 0
+            filters = ""
+            // Gruik how to avoid default value filtering ?
+            if ($("#host_filter_input").val().length > 0 && $("#host_filter_input").val() != "Hostname") {
+                filters = "host="  + $("#host_filter_input").val()
+                total++;
+            }
+            if ($("#os_filter_input").val().length > 0 && $("#os_filter_input").val() != "OS") {
+                if (total++ > 0) filters = filters + "&"
+                filters += "os="  + $("#os_filter_input").val()
+            }
+            if ($("#arch_filter_input").val().length > 0 && $("#arch_filter_input").val() != "Architecture") {
+                if (total++ > 0) filters = filters + "&"
+                filters += "architecture="  + $("#arch_filter_input").val()
+            }
+            url = "/json_api/sessions_list/{{project.name}}"
+            if (total > 0) {
+                url = url + "?" + filters
+            }
+            $.getJSON(url,
+                function (data) {
+                    drawSessionsTable(data)
+                }
+            )
+        }
+  
+        function drawSessionsTable(jsondata) {
+            sessions_data = new google.visualization.DataTable();
+            sessions_data.addColumn('datetime', 'Date');
+            sessions_data.addColumn('string', 'Hostname');
+            sessions_data.addColumn('string', 'Architecture');
+            sessions_data.addColumn('string', 'OS');
+            sessions_data.addColumn('string', 'Actions');
+            var n=0
+            for (var i in jsondata) {
+                sessions_data.addRow([new Date(jsondata[i].date*1000),
+                  jsondata[i].hostname ? 
+                       "<a href=\"/admin/server/host/" + jsondata[i].hostid + "\">" + jsondata[i].hostname + "</a>" : "",
+                  jsondata[i].architecture, jsondata[i].os, 
+                  
+                  "[<a href=\"#\" class=\"details_button\" id=\"details__" +  jsondata[i].token + "\">Get values</a>]" +
+                  "[<a href=\"/admin/server/session/" + jsondata[i].sessionid + "\">Edit session</a>]"
+                  ])
+                n++
+            }
+            sessions_table = new google.visualization.Table(document.getElementById('sessions_list'))
+            sessions_table.draw(sessions_data, {width: 800, is3D: true, title: 'List of metrics',
+                              page:"enable", pageSize : 20,allowHtml:true});
+
+            /* Only put the event handler *after* the table has been drawn */
+            $(".details_button").click(function(event) {
+                var src = event.target.id
+                var token = src.split("__")[1]
+                $.getJSON("/json_api/session_results/{{project.name}}?token=" + token,
+                    function(data) {
+                        drawResultsTable(data)
+                }) 
+            })
+
+        }
+
+        function drawResultsTable(jsondata) {
+            results_data = new google.visualization.DataTable();
+            results_data.addColumn('string', 'Path');
+            results_data.addColumn('string', 'Title');
+            results_data.addColumn('number', 'Value');
+            results_data.addColumn('string', 'Type');
+            for (var i in jsondata) {
+                results_data.addRow([jsondata[i].path, jsondata[i].title, jsondata[i].value, jsondata[i].type])
+            }
+            results_table = new google.visualization.Table(document.getElementById('results_list'))
+            results_table.draw(results_data, {width: 800, is3D: true, title: 'List of results',
+                              page:"enable", pageSize : 20,allowHtml:true});
+        }
+
+    </script>
+{%endblock %}
+
+{%block content %}
+
+<h1>List of sessions for {{ project.name }}</h1>
+
+<div class="filters">
+  Filters : 
+  <input type="text" id="host_filter_input" title="Hostname" class="filter_button"/>
+  <input type="text" id="arch_filter_input" title="Architecture" class="filter_button"/>
+  <input type="text" id="os_filter_input" title="OS" class="filter_button"/>
+</div>
+
+
+<div id="sessions_list"></div>
+
+<div id="results_list"></div>
+{%endblock %}

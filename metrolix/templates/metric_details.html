@@ -1,45 +1,50 @@
-<html>
-<head>
- <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+{%extends "base.html" %}
+
+{%block js_header %}
     <script type="text/javascript">
-    
-      // Load the Visualization API and the piechart package.
-      google.load('visualization', '1', {'packages':['piechart', "imageareachart","corechart", "annotatedtimeline"]});
+        google.load('visualization', '1', {'packages':["corechart"]});
+        google.setOnLoadCallback(drawChart);
       
-      // Set a callback to run when the Google Visualization API is loaded.
-      google.setOnLoadCallback(drawChart);
-  // Callback that creates and populates a data table, 
-      // instantiates the pie chart, passes in the data and
-      // draws it.
-      function drawChart() {
+        function drawChart() {
+            var data = new google.visualization.DataTable();
+            data.addColumn('datetime', 'Date');
+            data.addColumn('number', 'Value');
+            {% for result in results %}
+                data.addRow([new Date(Date.parse('{{result.session.date|date:"Y/m/d H:00"}}')), parseInt('{{result.value}}')])
+            {%endfor%}
 
-      // Create our data table.
-        var data = new google.visualization.DataTable();
-        data.addColumn('datetime', 'Date');
-        data.addColumn('number', 'Value');
-        {% for result in results %}
-        data.addRow([new Date(Date.parse('{{result.session.date|date:"Y/m/d H:00"}}')), parseInt('{{result.value}}')])
-        {%endfor%}
-
-        // Instantiate and draw our chart, passing in some options.
-//        var chart = new google.visualization.ImageAreaChart(document.getElementById('chart_div'));
-//        var chart = new google.visualization.AnnotatedTimeLine(document.getElementById('chart_div'));
-        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-        chart.draw(data, {width: 800, height: 240, is3D: true, title: 'Value of {{metric.title}}'});
-      }
+            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+            chart.draw(data, {width: 800, height: 240, is3D: true, title: 'Value of {{metric.title}}'});
+          }
     </script>
-  </head>
+{%endblock %}
 
-</head>
 
+{%block content %}
 <h1>Metric view for {{ metric.title }} ({{ metric.path }})</h1>
 
-<div id="chart_div"></div><!-- style="width:700px; height:500px;"></div>-->
+<div id="chart_div"></div
 
 <table>
-<tr><th>Value</th><th>Date</th></tr>
+<tr><th>Value</th><th>Date</th><th>Actions</th></tr>
 
 {% for result in results %}
-<tr><td>{{result.value}}</td><td>{{result.session.date}}</td></tr>
+<tr>
+  <td>{{result.value}}</td>
+  <td>{{result.session.date}}</td>
+  <td><input type="submit" class="delete_button" id="delete__{{result.id}}" /></td>
+</tr>
 {% endfor %}
 </table>
+
+<script>
+$(document).ready(function() {
+    $(".delete_button").click(function(event) {
+        var src = event.target.id
+        var chunks = src.split("__")
+        $.post("/json_api/delete_result", {id : chunks[1]},
+               function(data) { location.reload() })
+    })
+})
+</script>
+{%endblock%}
