@@ -2,6 +2,14 @@ from django.db import models
 
 class Host(models.Model):
   name = models.CharField(max_length=200)
+  cpus = models.IntegerField()
+  ram_mb = models.IntegerField()
+  architecture = models.CharField(max_length=30)
+  os = models.CharField(max_length=100)
+  description = models.CharField(max_length=200)
+
+  def __unicode__(self):
+     return self.name
 
 class Project(models.Model):
   name = models.CharField(max_length=200)
@@ -15,12 +23,12 @@ class Session(models.Model):
   token = models.CharField(max_length=36)
   host = models.ForeignKey(Host, null = True)
 
+  version = models.CharField(max_length=200)
+
   def __unicode__(self):
      return "[SE:%s/%s (%s)]" % (self.project.name, self.token, self.date)
 
   # user
-  # host
-  # version
 
 class Metric(models.Model):
   TYPES = (

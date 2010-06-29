@@ -1,4 +1,12 @@
 #! /bin/bash -ex
 
 PROJECT=$1
-echo "{\"project_name\" :\"$PROJECT\"}"|POST $METROLIX_SERVER/server/start_session
+
+HOSTNAME=`hostname`
+NCPUS=`grep -c vendor_id /proc/cpuinfo`
+RAM=$[`grep MemTotal /proc/meminfo|awk '{print $2}'`/1024]
+CPUTYPE=`cat /proc/cpuinfo|grep "model name"|cut -d ':' -f 2-|head -1`
+
+HI="{\"name\" : \"$HOSTNAME\", \"cpus\" : \"$NCPUS\", \"ram_mb\":\"$RAM\", \"cpu_type\" : \"$CPUTYPE\"}"
+
+echo "{\"project_name\" :\"$PROJECT\", \"host_info\" : $HI}"|POST $METROLIX_SERVER/server/start_session

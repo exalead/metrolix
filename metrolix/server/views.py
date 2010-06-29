@@ -1,7 +1,7 @@
 import time, datetime
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
 from django.shortcuts import render_to_response
-from metrolix.server.models import Project,Session, Metric,Result
+from metrolix.server.models import Project,Session, Metric,Result, Host
 from django.views.decorators.csrf import csrf_exempt
 from django.middleware import csrf
 from django.core import serializers
@@ -32,6 +32,26 @@ def start_session(request):
 
     session = Session(project = project)
     session.token = csrf._get_new_csrf_key()
+
+    if session_request.has_key("host_info"):
+        hi = session_request["host_info"]
+        if not hi.has_key("name"):
+            return HttpResponseBadRequest("host name required")
+        h = Host.objects.filter(name = hi["name"])
+        if len(h) > 0:
+            h = h[0]
+        else:
+            h = Host(name = hi["name"])
+            h.cpus = int(hi.get("cpus", "1"))
+            h.ram_mb = int(hi.get("ram_mb", "0"))
+            h.architecture = hi.get("architecture", None)
+            h.os = hi.get("os", None)
+            h.description = hi.get("description", None)
+            h.save()
+        session.host = h
+
+    session.version = session_request.get("version")
+
     session.save()
     return HttpResponse(session.token)
 
@@ -75,6 +95,18 @@ def report_result(request):
 # Frontend
 ####################################################################
 
+def put_projects(template_dict):
+  projects = Project.objects.all()
+  template_dict["projects"] = []
+  for project in projects:
+    template_dict["projects"].append(project.name)
+
+
+def index(request):
+    ret = {}
+    put_projects(ret)
+    return render_to_response("index.html", ret)
+
 def metric_details(request, project, path):
     try:
         proj_obj = Project.objects.get(name=project)
@@ -90,21 +122,26 @@ def metric_details(request, project, path):
 
     return HttpResponse("project=%s path=%s" % (project, path))
 
-def metric_list(request, project):
+def metrics_view_noproject(request):
+    if not "project_name" in request.session:
+        return HttpResponseNotFound("No project currently active")
+    return metrics_view(request, request.session["project_name"])
+
+def metrics_view(request, project):
     try:
         proj_obj = Project.objects.get(name=project)
     except:
         return HttpResponseNotFound("Project not found")
 
     metrics = Metric.objects.filter(project=proj_obj)
-    print "HAVE %i" % len(metrics)
 
     for metric in metrics:
         metric.nb_values = len(metric.result_set.all())
         metric.last_value = 0
 
-    return render_to_response("metric_list.html",
-                {"project": proj_obj, "metrics" : metrics})
+    ret =  {"project": proj_obj, "metrics" : metrics}
+    put_projects(ret)
+    return render_to_response("metric_list.html", ret)
 
 def json_metrics_list(request, project):
     try:
@@ -127,6 +164,10 @@ def json_metrics_list(request, project):
         ret.append({"path" : metric.path, "title": metric.title,
                     "nb_values" : len(metric.result_set.all())})
     return HttpResponse(simplejson.dumps(ret))
+
+def json_set_project(request):
+    request.session["project_name"] = request.REQUEST["project_name"]
+    return HttpResponse("OK")
 
 def json_metrics_data(request, project):
     try:
