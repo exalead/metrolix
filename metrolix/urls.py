@@ -8,6 +8,8 @@ urlpatterns = patterns('',
     (r'^server/start_session', "metrolix.server.views.start_session"),
     (r'^server/report_result', "metrolix.server.views.report_result"),
 
+    (r'^server/add_report', "metrolix.server.views.add_report"),
+
     #################### Frontend API #################
     (r'^json_api/metrics_list/(?P<project>[\.A-z0-9_-]+)$', "metrolix.server.views.json_metrics_list"),
 

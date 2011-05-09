@@ -1,78 +1,144 @@
 import time, datetime
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
 from django.shortcuts import render_to_response
-from metrolix.server.models import Project,Session, Metric,Result, Host
+from metrolix.server.models import Project,Session, Metric,Result, Host, Report, ReportType
 from django.views.decorators.csrf import csrf_exempt
 from django.middleware import csrf
 from django.core import serializers
-import simplejson
+import simplejson, logging
 
 ####################################################################
 # Server API
 ####################################################################
 
+server_logger = logging.getLogger("server")
+
+
 @csrf_exempt
 def start_session(request):
+  try:
     if request.method != "POST":
-        return HttpResponseBadRequest("POST request required")
+      server_logger.error("POST request required")
+      return HttpResponseBadRequest("POST request required")
 
     try:
       session_data = request.raw_post_data#request.POST["data"]
       session_request = simplejson.loads(session_data)
-    except:
-      return HttpResponseBadRequest("Could not deserialize request")
+    except Exception, e:
+      server_logger.error("Failed to deserialize JSON: %s" % e)
+      return HttpResponseBadRequest("Could not deserialize JSON request")
 
     if not session_request.has_key("project_name"):
+      server_logger.error("Project name not specified")
       return HttpResponseBadRequest("Project name not specified")
 
     try:
       project = Project.objects.get(name=session_request["project_name"])
     except:
+      server_logger.error("Could not find project %s" % session_request["project_name"])
       return HttpResponseNotFound("Could not find project %s" % session_request["project_name"])
 
     session = Session(project = project)
     session.token = csrf._get_new_csrf_key()
 
     if session_request.has_key("host_info"):
-        hi = session_request["host_info"]
-        if not hi.has_key("name"):
-            return HttpResponseBadRequest("host name required")
-        h = Host.objects.filter(name = hi["name"])
-        if len(h) > 0:
-            h = h[0]
-        else:
-            h = Host(name = hi["name"])
-            h.cpus = int(hi.get("cpus", "1"))
-            h.ram_mb = int(hi.get("ram_mb", "0"))
-            h.architecture = hi.get("architecture", None)
-            h.os = hi.get("os", None)
-            h.description = hi.get("description", None)
-            h.save()
-        session.host = h
+      hi = session_request["host_info"]
+      if not hi.has_key("name"):
+        server_logger.error("Host name required")
+        return HttpResponseBadRequest("host name required")
+      h = Host.objects.filter(name = hi["name"])
+      if len(h) > 0:
+        h = h[0]
+      else:
+        h = Host(name = hi["name"])
+        h.cpus = int(hi.get("cpus", "1"))
+        h.ram_mb = int(hi.get("ram_mb", "0"))
+        h.architecture = hi.get("architecture", "unknown")
+        h.os = hi.get("os", "unknown")
+        h.description = hi.get("description", "")
+        h.save()
+      session.host = h
 
     session.version = session_request.get("version")
-
     session.save()
     return HttpResponse(session.token)
 
+  except Exception, e:
+    server_logger.error("add_session failed: %s" % e)
+    raise e
+
+
 @csrf_exempt
-def report_result(request):
+def add_report(request):
+  try:
     if request.method != "POST":
-        return HttpResponseBadRequest("POST request required")
+      server_logger.error("POST request required")
+      return HttpResponseBadRequest("POST request required")
+
     try:
-      data =simplejson.loads(request.raw_post_data)
-    except:
+      data = simplejson.loads(request.raw_post_data)
+    except Exception, e:
+      server_logger.error("Failed to deserialize JSON: %s" % e)
       return HttpResponseBadRequest("Could not deserialize request")
 
     if not data.has_key("session_token"):
+      server_logger.error("Session token not specified")
+      return HttpResponseBadRequest("Session token not specified")
+    if not data.has_key("name") or not data.has_key("type"):
+      server_logger.error("Report name or type not specified")
+      return HttpResponseBadRequest("Report name or type not specified")
+
+    # Find the session
+    try:
+      session = Session.objects.get(token=data["session_token"])
+    except:
+      server_logger.error("Session %s not found" % data["session_token"])
+      return HttpResponseNotFound("Could not find session (bad token: %s)" % data["session_token"])
+
+    # Find the report type
+    try:
+      type = ReportType.objects.get(name = data["type"])
+    except Exception, e:
+      server_logger.error("Report type %s not found : %s" % (data["type"], e))
+      return HttpResponseNotFound("Could not find report type %s" % data["type"])
+
+    report = Report(name=data["name"], session = session, type = type)
+
+    if data.has_key("text"):
+      server_logger.info("Adding report with %s chars of text" % len(data["text"]))
+      report.text = data["text"]
+    report.save()
+    return HttpResponse("OK")
+
+  except Exception, e:
+    server_logger.error("add_report failed: %s" % e)
+    raise e
+
+@csrf_exempt
+def report_result(request):
+  try:
+    if request.method != "POST":
+      server_logger.error("POST request required")
+      return HttpResponseBadRequest("POST request required")
+
+    try:
+      data =simplejson.loads(request.raw_post_data)
+    except Exception, e:
+      server_logger.error("Failed to deserialize JSON: %s" % e)
+      return HttpResponseBadRequest("Could not deserialize request")
+
+    if not data.has_key("session_token"):
+      server_logger.error("Session token not specified")
       return HttpResponseBadRequest("Session token not specified")
     if not data.has_key("path") or not data.has_key("value"):
+      server_logger.error("Path or value not specified")
       return HttpResponseBadRequest("Path or value not specified")
 
     # Find the session
     try:
       session = Session.objects.get(token=data["session_token"])
     except:
+      server_logger.error("Session %s not found" % data["session_token"])
       return HttpResponseNotFound("Could not find session (bad token: %s)" % data["session_token"])
 
     # Retrieve or create the path info object
@@ -90,6 +156,11 @@ def report_result(request):
     result = Result(session=session, metric = metric, value = data["value"])
     result.save()
     return HttpResponse("OK")
+
+  except Exception, e:
+    server_logger.error("report_result failed: %s" % e)
+    raise e
+
 
 ####################################################################
 # Frontend API
