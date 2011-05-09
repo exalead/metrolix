@@ -23,12 +23,29 @@ class Session(models.Model):
   token = models.CharField(max_length=36)
   host = models.ForeignKey(Host, null = True)
 
+  testset  = models.CharField(max_length=200)
   version = models.CharField(max_length=200)
 
   def __unicode__(self):
-     return "[SE:%s/%s (%s)]" % (self.project.name, self.token, self.date)
+     return "[SE:%s/%s/%s (%s - %s)]" % (self.project.name, self.testset, self.version, self.token, self.date)
 
-  # user
+
+class ReportType(models.Model):
+  name = models.CharField(max_length=200)
+
+  def __unicode__(self):
+    return "[RT:%s]" % (self.name)
+
+class Report(models.Model):
+  session = models.ForeignKey(Session)
+  name = models.CharField(max_length=200)
+
+  # Inline reports
+  text = models.TextField()
+  # File-based reports
+  path = models.CharField(max_length=200)
+
+  type = models.ForeignKey(ReportType)
 
 class Metric(models.Model):
   TYPES = (
@@ -54,3 +71,14 @@ class Result(models.Model):
   def __unicode__(self):
      return "[%s=%s]" % (self.metric.path, self.value)
 
+
+
+class MultiSession(models.Model):
+  """
+  A multi-session is created manually. It waits for several reports
+  from several sessions for a maximum amount of time before performing its
+  alerting work
+  """
+
+  def __unicode__(self):
+    return "?"
