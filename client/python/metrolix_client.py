@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-import urllib2, simplejson, os, sys
+import urllib2, json, os, sys
 from optparse import OptionParser
 
 parser = OptionParser(usage='Interact with Metrolix server')
@@ -43,7 +43,7 @@ if command == "start-session":
   req["host_info"] = hostinfo
 
   # Send request
-  data = simplejson.dumps(req)
+  data = json.dumps(req)
 
   url = urllib2.urlopen(serverAddr + "/server/start_session", data)
   print "%s" % url.read()
@@ -66,7 +66,7 @@ elif command == "add-report":
   lines = map(lambda x : x.replace("\n", ""), lines)
   text = "\n".join(lines)
   req["text"] = text
-  url = urllib2.urlopen(serverAddr + "/server/add_report", simplejson.dumps(req))
+  url = urllib2.urlopen(serverAddr + "/server/add_report", json.dumps(req))
 
 elif command == "report-result":
   req = {}
@@ -77,7 +77,7 @@ elif command == "report-result":
     req["title"] = commandArgs[3]
   if len(commandArgs) >= 5:
     req["type"] = commandArgs[4]
-  url = urllib2.urlopen(serverAddr + "/server/report_result", simplejson.dumps(req))
+  url = urllib2.urlopen(serverAddr + "/server/report_result", json.dumps(req))
 
 else:
   print "Invalid command %s" % command
