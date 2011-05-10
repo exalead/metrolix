@@ -1,22 +1,29 @@
 #! /usr/bin/env python
-import argparse, urllib2, simplejson, os, sys
+import urllib2, simplejson, os, sys
+from optparse import OptionParser
 
-parser = argparse.ArgumentParser(description='Interact with Metrolix server')
+parser = OptionParser(usage='Interact with Metrolix server')
 
-parser.add_argument('command', help='Command to pass to the server')
-parser.add_argument('commandArgs', nargs='*', help='Command specific arguments')
-parser.add_argument('--server', dest='server', action='store')
+#parser.add_option('command', help='Command to pass to the server')
+#parser.add_option('commandArgs', nargs='*', help='Command specific arguments')
+parser.add_option('--server', dest='server', action='store')
 
-args = parser.parse_args()
+(opts, args) = parser.parse_args()
 
-serverAddr = args.server
+if len(args) < 1:
+  raise Exception("Usage: command commandArgs")
+
+command = args[0]
+commandArgs = args[1:]
+
+serverAddr = opts.server
 if serverAddr is None:
   serverAddr = os.getenv("METROLIX_SERVER")
 if serverAddr is None:
   raise Exception("Server address not found")
 
-if args.command == "start-session":
-  if len(args.commandArgs) == 0:
+if command == "start-session":
+  if len(commandArgs) == 0:
     raise Exception("Usage: start-session project-name [version] [testset]")
 
   # Hostinfo
@@ -27,11 +34,11 @@ if args.command == "start-session":
 
   # Global request
   req = {}
-  req["project_name"] = args.commandArgs[0]
-  if len(args.commandArgs) >=  2:
-    req["version"] = args.commandArgs[1]
-  if len(args.commandArgs) >= 3:
-    req["testset"] = args.commandArgs[2]
+  req["project_name"] = commandArgs[0]
+  if len(commandArgs) >=  2:
+    req["version"] = commandArgs[1]
+  if len(commandArgs) >= 3:
+    req["testset"] = commandArgs[2]
 
   req["host_info"] = hostinfo
 
@@ -41,17 +48,17 @@ if args.command == "start-session":
   url = urllib2.urlopen(serverAddr + "/server/start_session", data)
   print "%s" % url.read()
 
-elif args.command == "add-report":
-  if len(args.commandArgs) != 3 and len(args.commandArgs) != 4:
+elif command == "add-report":
+  if len(commandArgs) != 3 and len(commandArgs) != 4:
     raise Exception("Usage: add-report session_token report_name report_type [file]")
 
   req = {}
-  req["session_token"] = args.commandArgs[0]
-  req["name"] = args.commandArgs[1]
-  req["type"] = args.commandArgs[2]
+  req["session_token"] = commandArgs[0]
+  req["name"] = commandArgs[1]
+  req["type"] = commandArgs[2]
 
-  if len(args.commandArgs) == 4:
-    f = open(args.commandArgs[3])
+  if len(commandArgs) == 4:
+    f = open(commandArgs[3])
     lines = f.readlines()
   else:
     lines = sys.stdin.readlines()
@@ -61,16 +68,16 @@ elif args.command == "add-report":
   req["text"] = text
   url = urllib2.urlopen(serverAddr + "/server/add_report", simplejson.dumps(req))
 
-elif args.command == "report-result":
+elif command == "report-result":
   req = {}
-  req["session_token"] = args.commandArgs[0]
-  req["path"] = args.commandArgs[1]
-  req["value"] = args.commandArgs[2]
-  if len(args.commandArgs) >= 4:
-    req["title"] = args.commandArgs[3]
-  if len(args.commandArgs) >= 5:
-    req["type"] = args.commandArgs[4]
+  req["session_token"] = commandArgs[0]
+  req["path"] = commandArgs[1]
+  req["value"] = commandArgs[2]
+  if len(commandArgs) >= 4:
+    req["title"] = commandArgs[3]
+  if len(commandArgs) >= 5:
+    req["type"] = commandArgs[4]
   url = urllib2.urlopen(serverAddr + "/server/report_result", simplejson.dumps(req))
 
 else:
-  print "Invalid command %s" % args.command
+  print "Invalid command %s" % command
