@@ -28,10 +28,9 @@ if args.command == "start-session":
   # Global request
   req = {}
   req["project_name"] = args.commandArgs[0]
-  req["version"] = "none"
   if len(args.commandArgs) >=  2:
     req["version"] = args.commandArgs[1]
-  elif len(args.commandArgs) >= 3:
+  if len(args.commandArgs) >= 3:
     req["testset"] = args.commandArgs[2]
 
   req["host_info"] = hostinfo
