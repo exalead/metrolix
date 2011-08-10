@@ -17,17 +17,26 @@ class Project(models.Model):
   def __unicode__(self):
      return self.name
 
-class Session(models.Model):
+class ProjectVersion(models.Model):
   project = models.ForeignKey(Project)
+
+  version = models.CharField(max_length = 200)
+  branch = models.CharField(max_length = 200)
+
   date = models.DateTimeField(auto_now_add=True)
+
+class Session(models.Model):
+  project_version = models.ForeignKey(ProjectVersion)
+  date = models.DateTimeField(auto_now_add=True)
+
+  name = models.CharField(max_length= 200)
+
   token = models.CharField(max_length=36)
   host = models.ForeignKey(Host, null = True)
-
   testset  = models.CharField(max_length=200)
-  version = models.CharField(max_length=200)
 
   def __unicode__(self):
-     return "[SE:%s/%s/%s (%s - %s)]" % (self.project.name, self.testset, self.version, self.token, self.date)
+     return "[SE:%s/%s/%s (%s - %s)]" % (self.project.name, self.testset, self.project_version, self.token, self.date)
 
 
 class ReportType(models.Model):
@@ -70,7 +79,6 @@ class Result(models.Model):
 
   def __unicode__(self):
      return "[%s=%s]" % (self.metric.path, self.value)
-
 
 
 class MultiSession(models.Model):

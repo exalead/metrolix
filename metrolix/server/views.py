@@ -1,7 +1,8 @@
 import time, datetime
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
 from django.shortcuts import render_to_response
-from metrolix.server.models import Project,Session, Metric,Result, Host, Report, ReportType
+from metrolix.server.models import Project,Session, Metric,Result, Host, Report, ReportType, ProjectVersion
+from metrolix.reports.json_unit import JSONUnitReportHandler
 from django.views.decorators.csrf import csrf_exempt
 from django.middleware import csrf
 from django.core import serializers
@@ -12,7 +13,6 @@ import simplejson, logging
 ####################################################################
 
 server_logger = logging.getLogger("server")
-
 
 @csrf_exempt
 def start_session(request):
@@ -38,7 +38,20 @@ def start_session(request):
       server_logger.error("Could not find project %s" % session_request["project_name"])
       return HttpResponseNotFound("Could not find project %s" % session_request["project_name"])
 
-    session = Session(project = project)
+    version = session_request.get("version", None)
+    branch = session_request.get("branch", "trunk")
+
+    if version is None:
+      version = time.time()
+
+    project_versions = ProjectVersion.objects.filter(version=version, branch=branch)
+    if len(project_version) == 0:
+      project_version = ProjectVersion(version=version, branch=branch, project=project)
+      project_version.save()
+    else:
+      project_version = project_versions[0]
+
+    session = Session(project_version = project_version)
     session.token = csrf._get_new_csrf_key()
 
     if session_request.has_key("host_info"):
@@ -59,14 +72,13 @@ def start_session(request):
         h.save()
       session.host = h
 
-    session.version = session_request.get("version")
+    session.testset = session_request.get("testset", "All")
     session.save()
     return HttpResponse(session.token)
 
   except Exception, e:
     server_logger.error("add_session failed: %s" % e)
     raise e
-
 
 @csrf_exempt
 def add_report(request):
@@ -190,7 +202,7 @@ def json_sessions_list(request, project):
     except:
         return HttpResponseNotFound("Project not found")
 
-    sessions = Session.objects.filter(project=proj_obj)
+    sessions = Session.objects.filter(project_version__project=proj_obj)
 
     if request.GET.has_key("host"):
         sessions = sessions.filter(host__name__contains=request.GET["host"])
@@ -199,6 +211,11 @@ def json_sessions_list(request, project):
     if request.GET.has_key("architecture"):
         sessions = sessions.filter(host__architecture__contains=request.GET["architecture"])
 
+    if request.GET.has_key("branch"):
+        sessions = sessions.filter(project_version__branch=request.GET["branch"])
+    if request.GET.has_key("version"):
+        sessions = sessions.filter(project_version__version=request.GET["version"])
+
     sessions = sessions.order_by("-date")
 
     ret = []
@@ -206,7 +223,9 @@ def json_sessions_list(request, project):
         rs = {"date" : time.mktime(session.date.timetuple())}
         rs["token"] = session.token
         rs["sessionid"] = session.id
-        rs["version"] = session.version
+        rs["version"] = session.project_version.version
+        rs["branch"] = session.project_version.branch
+        rs["testset"] = session.testset
         if session.host is not None:
             rs["os"] = session.host.os
             rs["architecture"] = session.host.architecture
@@ -230,6 +249,13 @@ def json_session_results(request, project):
         ret.append(rs)
     return HttpResponse(simplejson.dumps(ret))
 
+def json_session_reports(request):
+    reports = Report.objects.filter(session__token=request.REQUEST["token"])
+    ret = []
+    for report in reports:
+        rs = { "name": report.name, "type": report.type.name }
+        ret.append(rs)
+    return HttpResponse(simplejson.dumps(ret))
 
 def json_set_project(request):
     request.session["project_name"] = request.REQUEST["project_name"]
@@ -272,6 +298,46 @@ def json_metrics_data(request, project):
     ret["sessions"] = sorted(ret["sessions"], key = lambda x : x["date"])
     return HttpResponse(simplejson.dumps(ret))
 
+def json_comparable_results(request):
+  data = request.raw_post_data#request.POST["data"]
+
+  print data
+  json = simplejson.loads(data)
+
+  rows = []
+  project = Project.objects.get(name=json["project"])
+
+  if json.has_key("branch"):
+    versions = ProjectVersion.objects.filter(project=project, branch=json["branch"])
+  else:
+    versions = ProjectVersion.objects.filter(project=project)
+
+  columns = []
+  for line in json["lines"]:
+    columns.append("%s-%s" % (line["path"], line.get("session_name", "ALL")))
+
+  # TODO Very slow
+  for version in versions:
+    row = ["%s-%s" % (version.version, version.branch)]
+    print "Checking %s" % row[0]
+    for line in json["lines"]:
+      path = line["path"]
+      session_name = line.get("session_name", None)
+      if line.has_key("session_name"):
+        results = Result.objects.filter(metric__path=path,session__project_version=version,
+                                        session__name=line["session_name"])
+      else:
+        results = Result.objects.filter(metric__path=path, session__project_version=version)
+      print "Results for %s / %s / %s: %i" % (row[0], path, session_name, len(results))
+      if len(results) >= 1:
+        row.append(results[0].value)
+      else:
+        row.append("NaN")
+    rows.append(row)
+
+  ret = { "rows" : rows, "columns" : columns }
+  return HttpResponse(simplejson.dumps(ret), mimetype="application/json")
+
 def json_delete_result(request):
     id = request.REQUEST["id"]
     Result.objects.get(pk=id).delete()
@@ -282,6 +348,43 @@ def json_delete_session(request):
     Session.objects.get(token=token).delete()
     return HttpResponse("ok")
 
+def json_html_report(request):
+    session_token = request.POST["session_token"]
+    report_name = request.POST["report_name"]
+    try:
+      report = Report.objects.get(session__token=session_token,name=report_name)
+    except:
+      server_logger.error("Report not found : session %s report %s" % (session_token, report_name))
+      return HttpResponseNotFound("Report not found")
+
+    # TODO Pluggable
+    if report.type.name == "raw":
+      return report.text
+    elif report.type.name == "json_unit":
+      h = JSONUnitReportHandler()
+      return h.renderToText(report)
+
+def json_html_compare_reports(request):
+    session1_token = request.GET["session1_token"]
+    session2_token = request.GET["session2_token"]
+    report1_name = request.GET["report1_name"]
+    report2_name = request.GET["report2_name"]
+
+    try:
+      report1 = Report.objects.get(session__token=session1_token,name=report1_name)
+      report2 = Report.objects.get(session__token=session2_token,name=report2_name)
+    except:
+      return HttpResponseNotFound("Report not found")
+
+    out =""
+    if report1.type.name == "raw":
+      return HttpResponseBadRequest("Cannot compare raw reports")
+      out =  report.text
+    elif report1.type.name == "json_unit":
+      h = JSONUnitReportHandler()
+      out = h.renderTextComparison(report1, report2)
+
+    return HttpResponse(out, mimetype="text/plain")
 ####################################################################
 # Frontend pages
 ####################################################################
@@ -345,6 +448,20 @@ def metrics_view(request, project):
     ret =  {"project": proj_obj, "metrics" : metrics}
     put_projects(request, ret)
     return render_to_response("metrics_view.html", ret)
+
+def compare_metrics(request):
+    if not "project_name" in request.session:
+        return HttpResponseNotFound("No project currently active")
+    project = request.session["project_name"]
+
+    try:
+        proj_obj = Project.objects.get(name=project)
+    except:
+        return HttpResponseNotFound("Project not found")
+
+    ret =  {"project": proj_obj}
+    put_projects(request, ret)
+    return render_to_response("compare_metrics.html", ret)
 
 def sessions_view_noproject(request):
     if not "project_name" in request.session:

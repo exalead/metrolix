@@ -57,6 +57,8 @@
             sessions_data = new google.visualization.DataTable();
             sessions_data.addColumn('datetime', 'Date');
             sessions_data.addColumn('string', 'Project version');
+            sessions_data.addColumn('string', 'Project branch');
+            sessions_data.addColumn('string', 'Tests set');
             sessions_data.addColumn('string', 'Hostname');
             sessions_data.addColumn('string', 'Architecture');
             sessions_data.addColumn('string', 'OS');
@@ -64,12 +66,12 @@
             var n=0
             for (var i in jsondata) {
                 sessions_data.addRow([new Date(jsondata[i].date*1000),
-		  jsondata[i].version,
+		  jsondata[i].version, jsondata[i].branch, jsondata[i].testset,
                   jsondata[i].hostname ? 
                        "<a href=\"/admin/server/host/" + jsondata[i].hostid + "\">" + jsondata[i].hostname + "</a>" : "",
                   jsondata[i].architecture, jsondata[i].os, 
                   
-                  "[<a href=\"#\" class=\"details_button\" id=\"details__" +  jsondata[i].token + "\">Get values</a>]" +
+                  "[<a href=\"#\" class=\"details_button\" id=\"details__" +  jsondata[i].token + "\">List results</a>]" +
                   "[<a href=\"/admin/server/session/" + jsondata[i].sessionid + "\">Edit session</a>]" +
                   "[<a href=\"#\" class=\"delete_button\" id=\"delete__" + jsondata[i].token + "\">Delete session</a>]"
                   ])
@@ -85,8 +87,14 @@
                 var token = src.split("__")[1]
                 $.getJSON("/json_api/session_results/{{project.name}}?token=" + token,
                     function(data) {
+                        $("#results").show()
                         drawResultsTable(data)
                 }) 
+                $.getJSON("/json_api/session_reports?token=" + token,
+                    function(data) {
+                        drawReportsTable(data)
+                }) 
+
             })
             $(".delete_button").click(function(event) {
                 var src = event.target.id
@@ -112,6 +120,19 @@
                               page:"enable", pageSize : 20,allowHtml:true});
         }
 
+        function drawReportsTable(jsondata) {
+            reports_data = new google.visualization.DataTable();
+            reports_data.addColumn('string', 'Name');
+            reports_data.addColumn('string', 'Type');
+            for (var i in jsondata) {
+                reports_data.addRow([jsondata[i].name, jsondata[i].type])
+            }
+            reports_table = new google.visualization.Table(document.getElementById('reports_list'))
+            reports_table.draw(reports_data, {width: 800, is3D: true, title: 'List of reports',
+                              page:"enable", pageSize : 20,allowHtml:true});
+        }
+
+
     </script>
 {%endblock %}
 
@@ -129,5 +150,12 @@
 
 <div id="sessions_list"></div>
 
+<div id="results" style="display:none;">
+<h2>List of results for selected session</h2>
 <div id="results_list"></div>
+
+<h2>List of reports for selected session</h2>
+<div id="reports_list"></div>
+</div>
+
 {%endblock %}

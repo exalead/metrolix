@@ -1,4 +1,7 @@
 # Django settings for metrolix project.
+import logging
+
+logging.basicConfig()
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -6,6 +9,38 @@ TEMPLATE_DEBUG = DEBUG
 ADMINS = (
     # ('Your Name', 'your_email@domain.com'),
 )
+
+LOGGING = {
+  'version': 1,
+  'disable_existing_loggers': True,
+  'formatters': {
+    'verbose': {
+      'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+    },
+  },
+  'handlers': {
+    'null': {
+      'level':'DEBUG',
+      'class':'django.utils.log.NullHandler',
+    },
+    'console':{
+      'level':'DEBUG',
+      'class':'logging.StreamHandler',
+      'formatter': 'simple'
+    },
+  },
+  'loggers': {
+    'django': {
+      'handlers':['console'],
+      'propagate': True,
+      'level':'INFO',
+    },
+    'server': {
+      'handlers': ['console'],
+      'level': 'INFO',
+    }
+  }
+}
 
 MANAGERS = ADMINS
 

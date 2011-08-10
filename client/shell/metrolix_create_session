@@ -23,4 +23,6 @@ fi
 #echo "{\"project_name\" :\"$PROJECT\", \"version\" : \"$VERSION\", \"host_info\" : $HI}"|$cmd $METROLIX_SERVER/server/start_session
 
 DATA="{\"project_name\" :\"$PROJECT\", \"version\" : \"$VERSION\", \"host_info\" : $HI}"
+echo $DATA
+set -x
 wget -O /dev/stdout -o /dev/null --post-data "$DATA" "$METROLIX_SERVER/server/start_session"
