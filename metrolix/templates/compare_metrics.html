@@ -1,0 +1,78 @@
+{%extends "base.html" %}
+
+{%block js_header %}
+    <script type="text/javascript" src="/site_media/js/hint.js"></script>
+    <script type="text/javascript">
+        var metrics_table
+        var metrics_data
+        var values_graph
+        var values_data
+
+        google.load('visualization', '1', {'packages':['table', "corechart", "annotatedtimeline"]})
+        google.setOnLoadCallback(gdataLoaded);
+        
+        function gdataLoaded() {
+	    /* Action buttons */
+            $("#graph_button").click(function(event) {
+		request = {}
+		request["lines"] = []
+		request["project"] = "{{project.name}}"
+
+
+		user_code = $("#user_code").val();
+		console.log(user_code);
+		eval(user_code);
+
+
+                var dataString = JSON.stringify(request);
+
+		$.post("/json_api/comparable_results", data = dataString,
+                    success = function(data) {
+			console.log("Success")
+                        drawGraph(data)
+                    })
+            })
+        }
+  
+        /* Draw the chart from JSON data for selected metrics */
+        function drawGraph(jsondata) {
+            values_data = new google.visualization.DataTable();
+            values_data.addColumn('string', 'Project Version');
+            for (var metric in jsondata.columns) {
+		console.log("Column: " + metric)
+                values_data.addColumn('number', jsondata.columns[metric])
+            }
+	    console.log("Have rows " + jsondata.rows.length);
+            for (var row = 0; row < jsondata.rows.length; row++) {
+            	console.log("Process row " + row + ":" + jsondata["rows"][row])
+                data = jsondata.rows[row]
+                values_data.addRows(1)
+		for (var i = 0; i < data.length; i++) {
+		   console.log("Process cell: " + i)
+                    if (data[i] != "NaN") {
+                        values_data.setValue(row, i , data[i])
+                    }
+		}
+            }
+            values_graph = new google.visualization.LineChart(document.getElementById('graph_div'));
+            values_graph.draw(values_data, {width: 1000, height: 240, is3D: true, title: 'Values'})
+
+            values_graph = new google.visualization.Table(document.getElementById('table_div'));
+            values_graph.draw(values_data)
+        }
+    </script>
+{%endblock %}
+
+{%block content %}
+
+<h1>Evolution for  {{ project.name }}</h1>
+  <textarea id="user_code" rows="8" cols="200">
+request["lines"].push({"path": "/benchmark2/facetting1/search_10x10/search/all_facets/avg_qps", "session_name" : "Linux" } );    
+request["lines"].push( {"path": "/benchmark2/facetting1/search_10x10/search/1_facet_only/avg_qps", "session_name" : "Linux" } );    
+
+   </textarea><br />
+ <input type="submit" id="graph_button" value="Compare !"/>
+ <div id="graph_div"></div>
+<div id="table_div"></div>
+
+{%endblock %}
