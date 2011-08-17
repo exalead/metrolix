@@ -123,6 +123,12 @@ def add_report(request):
     if data.has_key("text"):
       server_logger.info("Adding report with %s chars of text" % len(data["text"]))
       report.text = data["text"]
+    elif data.has_key("path"):
+      server_logger.info("Adding report with file: %s" % data["path"])
+      report.path = data["path"]
+    elif data.has_key("url"):
+      server_logger.info("Adding report with URL: %s" % data["url"])
+      report.url = data["url"]
     report.save()
     return HttpResponse("OK")
 
