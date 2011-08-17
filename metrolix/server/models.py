@@ -20,8 +20,8 @@ class Project(models.Model):
 class ProjectVersion(models.Model):
   project = models.ForeignKey(Project)
 
-  version = models.CharField(max_length = 200)
-  branch = models.CharField(max_length = 200)
+  version = models.CharField(max_length = 200, null=True)
+  branch = models.CharField(max_length = 200, null=True)
 
   date = models.DateTimeField(auto_now_add=True)
 
@@ -29,11 +29,11 @@ class Session(models.Model):
   project_version = models.ForeignKey(ProjectVersion)
   date = models.DateTimeField(auto_now_add=True)
 
-  name = models.CharField(max_length= 200)
+  name = models.CharField(max_length= 200, null=True)
 
   token = models.CharField(max_length=36)
   host = models.ForeignKey(Host, null = True)
-  testset  = models.CharField(max_length=200)
+  testset  = models.CharField(max_length=200, null=True)
 
   def __unicode__(self):
      return "[SE:%s/%s/%s (%s - %s)]" % (self.project.name, self.testset, self.project_version, self.token, self.date)
@@ -52,7 +52,9 @@ class Report(models.Model):
   # Inline reports
   text = models.TextField()
   # File-based reports
-  path = models.CharField(max_length=200)
+  path = models.CharField(max_length=200, null=True)
+  # URL-based reports
+  url = models.CharField(max_length=200, null=True)
 
   type = models.ForeignKey(ReportType)
 
