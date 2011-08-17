@@ -300,10 +300,18 @@ def json_metrics_data(request, project):
     results = Result.objects.filter(metric__path__in=data.getlist("path"),metric__project=proj_obj)
     for result in results:
         if not sessions.has_key(result.session.token):
-            sessions[result.session.token] = {"date" : time.mktime(result.session.date.timetuple()), "values":[]}
+            sessions[result.session.token] = {
+              "date" : time.mktime(result.session.date.timetuple()),
+              "name" : result.session.name,
+              "testset" : result.session.testset,
+              "version" : result.session.project_version.version,
+              "branch" : result.session.project_version.branch,
+
+            "values":[]}
             for i in xrange(0,len(metrics)):
-                 sessions[result.session.token]["values"].append("undefined")
-        sessions[result.session.token]["values"][path_to_idx[result.metric.path]] = result.value
+                 sessions[result.session.token]["values"].append({"value":"undefined", "id": "undefined"})
+        sessions[result.session.token]["values"][path_to_idx[result.metric.path]] = {
+            "value" :result.value, "id" : result.id}
 
     ret["sessions"] = sessions.values()
     ret["sessions"] = sorted(ret["sessions"], key = lambda x : x["date"])

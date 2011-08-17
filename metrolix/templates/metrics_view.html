@@ -12,9 +12,8 @@
         google.setOnLoadCallback(gdataLoaded);
         
         function gdataLoaded() {
-	    /* Action buttons */
+     	      /* Action buttons */
             $("#graph_button").attr("disabled", true);
-            $("#details_button").attr("disabled", true);
 
             $("#graph_button").click(function(event) {
                 paths = ""
@@ -27,17 +26,11 @@
                 }
                 $.getJSON("/json_api/metrics_data/{{project.name}}?" + paths,
                     function(data) {
-                        drawGraph(data)
+                        drawDetails(data)
                     })
             })
-	    $("#details_button").click(function(event) {
-                selection = metrics_table.getSelection()
-                path = metrics_data.getValue(selection[0].row, 0)
-		document.location="/dashboard/metric_details?path=" + path
-	    })
 
-
-	    /* Path filter */
+      	    /* Path filter */
             $("#path_filter_input").hint("default_value");    
             $("#path_filter_input").keypress(function(event) {
                 if (event.keyCode != '13') {
@@ -52,41 +45,76 @@
                 )
             })
 
-	    /* Initial data load */
+	          /* Initial data load */
             $.getJSON("/json_api/metrics_list/{{project.name}}",
-                function (data) {
-                    drawTable(data)
-                }
-            )
+              function (data) {
+                  drawTable(data)
+            })
         }
-  
-        /* Draw the chart from JSON data for selected metrics */
-        function drawGraph(jsondata) {
+
+        function drawDetails(jsondata) {
             /* Populate with initial data */
-            values_data = new google.visualization.DataTable();
-            values_data.addColumn('datetime', 'Date');
+            graph_data = new google.visualization.DataTable();
+            table_data = new google.visualization.DataTable();
+            graph_data.addColumn('datetime', 'Date');
+            table_data.addColumn('datetime', 'Date');
+            table_data.addColumn('string', "Session name")
+            table_data.addColumn('string', "Session tests set")
+            table_data.addColumn('string', "Project version")
+            table_data.addColumn('string', "Project branch")
             for (var metric in jsondata.metrics) {
-                values_data.addColumn('number', jsondata.metrics[metric].path);
+                table_data.addColumn('number', jsondata.metrics[metric].path);
+                graph_data.addColumn('number', jsondata.metrics[metric].path);
             }
+            if (jsondata.metrics.length == 1) {
+                table_data.addColumn('string', 'Delete');
+            }
+
             nsess = 0
             for (var sess = 0; sess < jsondata.sessions.length; sess++) {
                 data = jsondata.sessions[sess]
-                values_data.addRows(1)
-                values_data.setValue(sess, 0, new Date(data.date*1000))
+                table_data.addRows(1)
+                graph_data.addRows(1);
+                table_data.setValue(sess, 0, new Date(data.date*1000))
+                graph_data.setValue(sess, 0, new Date(data.date*1000))
+                table_data.setValue(sess, 1, data.name);
+                table_data.setValue(sess, 2, data.testset);
+                table_data.setValue(sess, 3, data.version);
+                table_data.setValue(sess, 4, data.branch);
                 for (var i = 0; i < jsondata.metrics.length; i++) {
-                    if (data.values[i] != "undefined") {
-                        values_data.setValue(sess, i + 1 , data.values[i])
+                console.log("Add data");
+                    if (data.values[i].value != "undefined") {
+                        table_data.setValue(sess, i + 5 , data.values[i].value)
+                        graph_data.setValue(sess, i + 1 , data.values[i].value)
                     }
+                }
+                if (jsondata.metrics.length == 1) {
+                    table_data.setValue(sess, 6, 
+                        '<input type="submit" class="delete_button" id="delete__' + data.values[0].id + '" value="Delete result"/>');
                 }
                 nsess++
             }
-            values_graph = new google.visualization.AnnotatedTimeLine(document.getElementById('values_div'));
-            values_graph.draw(values_data, {width: 1000, height: 240, is3D: true, title: 'Values'})
+            static_graph = new google.visualization.LineChart(document.getElementById('static_graph'));
+            static_graph.draw(graph_data, {width: 1000, height: 240, is3D: true, title: 'Values'})
 
-            values_graph2 = new google.visualization.LineChart(document.getElementById('values_div2'));
-            values_graph2.draw(values_data, {width: 1000, height: 240, is3D: true, title: 'Values'})
+            history_graph = new google.visualization.AnnotatedTimeLine(document.getElementById('history_graph'));
+            history_graph.draw(graph_data, {width: 1000, height: 240, is3D: true, title: 'Values'})
 
-        }
+            values_table = new google.visualization.Table(document.getElementById('values_table'));
+            values_table.draw(table_data, {width: 800, is3D: true, title: 'Sessions',allowHtml:"true",
+                              page:"enable", pageSize : 20});
+
+            $(".delete_button").click(function(event) {
+                var src = event.target.id
+                var chunks = src.split("__")
+                console.log("Deleting " + src);
+                $.post("/json_api/delete_result", {id : chunks[1]},
+                       function(data) { 
+                       /* Reload table */
+                       $("#graph_button").click();
+                    });
+            })
+	      }
 
         /* Draw the table from JSON data with all metrics */
         function drawTable(jsondata) {
@@ -137,10 +165,12 @@
 <div class="metrics_actions">
   Actions :
   <input type="submit" id="graph_button" value="Get graph for selected metrics"/>
-  <input type="submit" id="details_button" value="Detailed metric view"/>
 </div>
 
-<div id="values_div" style="width:800px;height:240px;"></div>
-<div id="values_div2"></div>
+<div id="selected_details">
+  <div id="static_graph"></div>
+  <div id="values_table"></div>
+  <div id="history_graph" style="width:800px; height:240px;"></div>
+</div>
 
 {%endblock %}
