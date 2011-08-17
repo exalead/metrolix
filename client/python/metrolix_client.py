@@ -4,53 +4,63 @@ from optparse import OptionParser
 
 parser = OptionParser(usage='Interact with Metrolix server')
 
-#parser.add_option('command', help='Command to pass to the server')
+parser.add_option("-c", "--command", dest="command", help='Command to pass to the server (start-session, report-result or add-report)')
 #parser.add_option('commandArgs', nargs='*', help='Command specific arguments')
-parser.add_option('--server', dest='server', action='store')
+parser.add_option("-s", '--server', dest='server', action='store')
+
+parser.add_option("-p", '--project', dest='project', help="Project name (for start-session only)")
+parser.add_option("-v", '--version', dest='version', help="Project version (for start-session only)")
+parser.add_option("-b", '--branch', dest='branch', help="Project branch (for start-session only)")
+
+parser.add_option("-n", '--session-name', dest='sn', help="Session name (for start-session only)")
+parser.add_option("-t", '--session-testset', dest='st', help="Session test-set (for start-session only)")
 
 (opts, args) = parser.parse_args()
 
-if len(args) < 1:
-  raise Exception("Usage: command commandArgs")
-
-command = args[0]
-commandArgs = args[1:]
+command = opts.command
+if command is None:
+  print "Command not specified"
+  parser.print_help()
+  sys.exit(1)
 
 serverAddr = opts.server
 if serverAddr is None:
   serverAddr = os.getenv("METROLIX_SERVER")
 if serverAddr is None:
-  raise Exception("Server address not found")
+  print "Server address not specified"
+  parser.print_help()
+  sys.exit(1)
 
 if command == "start-session":
-  if len(commandArgs) == 0:
-    raise Exception("Usage: start-session project-name [version] [testset]")
-
   # Hostinfo
   (sysname, nodename, release, version, machine) = os.uname()
   hostinfo = {"name" : nodename}
   hostinfo["cpus"] = 1
   hostinfo["ram_mb"] = 42
 
+  if opts.project is None:
+    print "Project not specified"
+    parser.print_help()
+    sys.exit(1)
+
   # Global request
   req = {}
-  req["project_name"] = commandArgs[0]
-  if len(commandArgs) >=  2:
-    req["version"] = commandArgs[1]
-  if len(commandArgs) >= 3:
-    req["testset"] = commandArgs[2]
-
+  req["project_name"] = opts.project
+  req["version"] = opts.version
+  req["branch"] = opts.branch
+  req["session_name"] = opts.sn
+  req["testset"] = opts.st
   req["host_info"] = hostinfo
 
-  # Send request
   data = json.dumps(req)
-
   url = urllib2.urlopen(serverAddr + "/server/start_session", data)
   print "%s" % url.read()
 
 elif command == "add-report":
   if len(commandArgs) != 3 and len(commandArgs) != 4:
-    raise Exception("Usage: add-report session_token report_name report_type [file]")
+    print "add-report  session_token report_name report_type [file]"
+    parser.print_help()
+    sys.exit(1)
 
   req = {}
   req["session_token"] = commandArgs[0]
@@ -69,14 +79,19 @@ elif command == "add-report":
   url = urllib2.urlopen(serverAddr + "/server/add_report", json.dumps(req))
 
 elif command == "report-result":
+  if len(args) < 3:
+    print "report-result session_token path value [title] [type]"
+    parser.print_help()
+    sys.exit(1)
+
   req = {}
-  req["session_token"] = commandArgs[0]
-  req["path"] = commandArgs[1]
-  req["value"] = commandArgs[2]
-  if len(commandArgs) >= 4:
-    req["title"] = commandArgs[3]
-  if len(commandArgs) >= 5:
-    req["type"] = commandArgs[4]
+  req["session_token"] = args[0]
+  req["path"] = args[1]
+  req["value"] = args[2]
+  if len(args) >= 4:
+    req["title"] = args[3]
+  if len(args) >= 5:
+    req["type"] = args[4]
   url = urllib2.urlopen(serverAddr + "/server/report_result", json.dumps(req))
 
 else:
