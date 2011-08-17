@@ -58,7 +58,8 @@
             sessions_data.addColumn('datetime', 'Date');
             sessions_data.addColumn('string', 'Project version');
             sessions_data.addColumn('string', 'Project branch');
-            sessions_data.addColumn('string', 'Tests set');
+            sessions_data.addColumn('string', 'Session name');
+            sessions_data.addColumn('string', 'Session tests set');
             sessions_data.addColumn('string', 'Hostname');
             sessions_data.addColumn('string', 'Architecture');
             sessions_data.addColumn('string', 'OS');
@@ -66,7 +67,7 @@
             var n=0
             for (var i in jsondata) {
                 sessions_data.addRow([new Date(jsondata[i].date*1000),
-		  jsondata[i].version, jsondata[i].branch, jsondata[i].testset,
+		  jsondata[i].version, jsondata[i].branch, jsondata[i].name, jsondata[i].testset,
                   jsondata[i].hostname ? 
                        "<a href=\"/admin/server/host/" + jsondata[i].hostid + "\">" + jsondata[i].hostname + "</a>" : "",
                   jsondata[i].architecture, jsondata[i].os, 

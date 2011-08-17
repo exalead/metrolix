@@ -39,16 +39,19 @@ def start_session(request):
       return HttpResponseNotFound("Could not find project %s" % session_request["project_name"])
 
     version = session_request.get("version", None)
-    branch = session_request.get("branch", "trunk")
+    branch = session_request.has_key("branch") and session_request.get("branch") or "trunk"
 
     if version is None:
       version = time.time()
 
+    server_logger.error("Looking up project version %s %s" % (version, branch))
     project_versions = ProjectVersion.objects.filter(version=version, branch=branch)
-    if len(project_version) == 0:
+    if len(project_versions) == 0:
+      server_logger.error("Creating new project version %s - %s" % (version, branch))
       project_version = ProjectVersion(version=version, branch=branch, project=project)
       project_version.save()
     else:
+      server_logger.info("Using existing project version %s - %s" % (version, branch))
       project_version = project_versions[0]
 
     session = Session(project_version = project_version)
@@ -73,6 +76,7 @@ def start_session(request):
       session.host = h
 
     session.testset = session_request.get("testset", "All")
+    session.name = session_request.get("session_name", "N/A")
     session.save()
     return HttpResponse(session.token)
 
@@ -154,9 +158,9 @@ def report_result(request):
       return HttpResponseNotFound("Could not find session (bad token: %s)" % data["session_token"])
 
     # Retrieve or create the path info object
-    metrics = Metric.objects.filter(path=data["path"],project=session.project)
+    metrics = Metric.objects.filter(path=data["path"],project=session.project_version.project)
     if len(metrics) == 0:
-        metric = Metric(path=data["path"], project = session.project)
+        metric = Metric(path=data["path"], project = session.project_version.project)
         if data.has_key("title"):
             metric.title = data["title"]
         if data.has_key("type"):
@@ -225,6 +229,7 @@ def json_sessions_list(request, project):
         rs["sessionid"] = session.id
         rs["version"] = session.project_version.version
         rs["branch"] = session.project_version.branch
+        rs["name"] = session.name
         rs["testset"] = session.testset
         if session.host is not None:
             rs["os"] = session.host.os
