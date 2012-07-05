@@ -265,6 +265,8 @@ def json_session_reports(request):
     ret = []
     for report in reports:
         rs = { "name": report.name, "type": report.type.name }
+        if report.url is not None:
+          rs["url"] = report.url
         ret.append(rs)
     return HttpResponse(simplejson.dumps(ret))
 

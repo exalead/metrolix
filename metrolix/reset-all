@@ -5,6 +5,8 @@ export PATH=/usr/bin:$PATH
 rm metrolix.db
 ./manage.py syncdb
 
+exit
+
 cat|./manage.py shell << EOF
 from metrolix.server.models import *
 import metrolix

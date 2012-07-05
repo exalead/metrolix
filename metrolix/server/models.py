@@ -25,6 +25,9 @@ class ProjectVersion(models.Model):
 
   date = models.DateTimeField(auto_now_add=True)
 
+  def __unicode__(self):
+     return "%s/%s-%s" % (self.project.name, self.branch, self.version)
+
 class Session(models.Model):
   project_version = models.ForeignKey(ProjectVersion)
   date = models.DateTimeField(auto_now_add=True)

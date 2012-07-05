@@ -126,7 +126,12 @@
             reports_data.addColumn('string', 'Name');
             reports_data.addColumn('string', 'Type');
             for (var i in jsondata) {
-                reports_data.addRow([jsondata[i].name, jsondata[i].type])
+                if (jsondata[i].url != undefined) {
+                    reports_data.addRow([
+                    "<a href=\"" + jsondata[i].url + "\">" + jsondata[i].name + "</a>", jsondata[i].type])
+                } else {
+                    reports_data.addRow([jsondata[i].name, jsondata[i].type])
+                }
             }
             reports_table = new google.visualization.Table(document.getElementById('reports_list'))
             reports_table.draw(reports_data, {width: 800, is3D: true, title: 'List of reports',
