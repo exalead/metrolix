@@ -56,9 +56,9 @@ if command == "start-session":
   url = urllib2.urlopen(serverAddr + "/server/start_session", data)
   print "%s" % url.read()
 
-elif command == "add-report":
-  if len(commandArgs) != 3 and len(commandArgs) != 4:
-    print "add-report  session_token report_name report_type [file]"
+elif command == "add-report-from-file":
+  if len(commandArgs) != 4:
+    print "add-report-from-file session_token report_name report_type [file]. If file is not specified, stdin is used"
     parser.print_help()
     sys.exit(1)
 
@@ -76,6 +76,19 @@ elif command == "add-report":
   lines = map(lambda x : x.replace("\n", ""), lines)
   text = "\n".join(lines)
   req["text"] = text
+  url = urllib2.urlopen(serverAddr + "/server/add_report", json.dumps(req))
+
+elif command == "add-report-from-url":
+  if len(args) != 4:
+    print "add-report-from-url  session_token report_name report_type url"
+    parser.print_help()
+    sys.exit(1)
+
+  req = {}
+  req["session_token"] = args[0]
+  req["name"] = args[1]
+  req["type"] = args[2]
+  req["url"] = args[3]
   url = urllib2.urlopen(serverAddr + "/server/add_report", json.dumps(req))
 
 elif command == "report-result":
